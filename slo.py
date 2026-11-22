@@ -1,5 +1,6 @@
 """Evaluate an availability SLO from request counts."""
 import argparse
+import json
 from fractions import Fraction
 
 
@@ -17,15 +18,26 @@ def main():
     parser.add_argument("--total", type=int, required=True)
     parser.add_argument("--failed", type=int, required=True)
     parser.add_argument("--target", type=Fraction, default=Fraction("0.999"))
+    parser.add_argument("--json", action="store_true", help="Emit machine-readable results")
     args = parser.parse_args()
     try:
         availability, burn, remaining = evaluate(args.total, args.failed, args.target)
     except ValueError as error:
         parser.error(str(error))
-    print(f"Availability: {float(availability):.4%}")
-    print(f"Error budget burn: {float(burn):.2f}x")
-    print(f"Remaining failure allowance: {remaining}")
-    return 0 if availability >= args.target else 1
+    met = availability >= args.target
+    if args.json:
+        print(json.dumps({
+            "availability": float(availability),
+            "target": float(args.target),
+            "burn_rate": float(burn),
+            "remaining_failure_allowance": remaining,
+            "slo_met": met,
+        }))
+    else:
+        print(f"Availability: {float(availability):.4%}")
+        print(f"Error budget burn: {float(burn):.2f}x")
+        print(f"Remaining failure allowance: {remaining}")
+    return 0 if met else 1
 
 
 if __name__ == "__main__":
